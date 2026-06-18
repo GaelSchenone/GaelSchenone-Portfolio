@@ -1,0 +1,25 @@
+/* ── Hero ───────────────────────────────────────────────────── */
+.hero {
+  position: relative;
+  overflow: hidden;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: var(--space-lg);
+}
+
+.hero-title {
+  position: relative;
+  z-index: 1;
+  line-height: 0.85;
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+
+.projects{
+    height: 500px;
+    width: 100%;
+    background-color: antiquewhite;
+}
