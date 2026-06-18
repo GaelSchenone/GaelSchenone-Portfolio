@@ -10,6 +10,7 @@ const CoolTextHover = ({
   color = "inherit",
   onCharClick,
   hiddenChars = new Set(),
+  waveIndices = new Set(),
 }) => {
   const chars = [...text];
   const refs = useRef([]);
@@ -52,12 +53,35 @@ const CoolTextHover = ({
 
   const pushAmount = hoveredIndex !== null ? getPushAmount(hoveredIndex) : 0;
 
+  // Touch: use the first char under the touch point
+  const onTouchStart = (e) => {
+    const t = e.changedTouches[0]
+    if (!t) return
+    // Find which span is under the touch
+    for (let i = 0; i < refs.current.length; i++) {
+      const el = refs.current[i]
+      if (!el || hiddenChars.has(i)) continue
+      const r = el.getBoundingClientRect()
+      if (t.clientX >= r.left && t.clientX <= r.right &&
+          t.clientY >= r.top && t.clientY <= r.bottom) {
+        setHoveredIndex(i)
+        return
+      }
+    }
+  }
+
+  const onTouchEnd = () => {
+    setHoveredIndex(null)
+  }
+
   return (
     <>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=Rethink+Sans:ital,wght@0,400..800;1,400..800&display=swap');`}</style>
       <h1
         data-cooltext
         onMouseLeave={() => setHoveredIndex(null)}
+        onTouchStart={onTouchStart}
+        onTouchEnd={onTouchEnd}
         style={{
           fontFamily: '"Rethink Sans", sans-serif',
           fontSize,
@@ -71,13 +95,14 @@ const CoolTextHover = ({
       >
         {chars.map((char, i) => {
           const isActive = i === hoveredIndex;
+          const isWave = waveIndices.has(i);
           const isHidden = hiddenChars.has(i);
           const parts = [];
 
           if (hoveredIndex !== null && i > hoveredIndex) {
             parts.push(`translateX(${pushAmount}px)`);
           }
-          if (isActive) {
+          if (isActive || isWave) {
             parts.push(`scaleX(${SCALE})`);
           }
 
@@ -104,13 +129,14 @@ const CoolTextHover = ({
               style={{
                 display: "inline-block",
                 transformOrigin: "left center",
-                fontWeight: isActive ? HOVER_WEIGHT : BASE_WEIGHT,
+                fontWeight: (isActive || isWave) ? HOVER_WEIGHT : BASE_WEIGHT,
                 transform: parts.length ? parts.join(" ") : "none",
-                transition: "transform 220ms ease, font-weight 220ms ease",
+                transition: "transform 220ms ease, font-weight 220ms ease, opacity 400ms ease",
                 cursor: "pointer",
                 userSelect: "none",
                 visibility: isHidden ? "hidden" : "visible",
                 pointerEvents: isHidden ? "none" : "auto",
+                opacity: isHidden ? 0 : 1,
               }}
             >
               {char === " " ? "‎ ‎" : char}

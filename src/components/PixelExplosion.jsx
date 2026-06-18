@@ -8,7 +8,7 @@ const MOUSE_FORCE = 6
 const CLICK_FORCE = 14
 const Y_OFFSET = 17
 const RESTORE_DELAY = 5000
-const ASCII_CHARS = ['▓', '▒', '░', '@','#']
+const GRAVITY = 0.08
 
 function sampleCharParticles(data, offsetX = 0, offsetY = 0) {
   const { char, rect, fontFamily, fontSize, fontWeight, color, scaleX } = data
@@ -63,7 +63,7 @@ function sampleCharParticles(data, offsetX = 0, offsetY = 0) {
           angularV: 0,
           size: s,
           a: 1,
-          chr: ASCII_CHARS[Math.floor(Math.random() * ASCII_CHARS.length)],
+          color,
         })
       }
     }
@@ -83,7 +83,6 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
   const lastActivityRef = useRef(0)
   const onRestoreRef = useRef(onRestore)
 
-  // Always keep the latest onRestore in the ref so timeouts don't capture a stale closure
   useEffect(() => {
     onRestoreRef.current = onRestore
   })
@@ -208,6 +207,9 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
           }
         }
 
+        // Soft gravity
+        p.vy += GRAVITY
+
         p.vx *= DAMPING
         p.vy *= DAMPING
         p.angularV *= 0.96
@@ -228,10 +230,10 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
         ctx.rotate(p.rotation)
         const hs = p.size / 2
         // shadow
-        ctx.fillStyle = `rgba(0, 0, 0, 0.35)`
+        ctx.fillStyle = `rgba${p.color.slice(3, -1)}, 0.35)`
         ctx.fillRect(-hs + 1.5, -hs + 1.5, p.size, p.size)
         // main cube
-        ctx.fillStyle = `rgba(0, 0, 0, 1)`
+        ctx.fillStyle = p.color
         ctx.fillRect(-hs, -hs, p.size, p.size)
         ctx.restore()
       }
@@ -268,7 +270,7 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
       window.removeEventListener('click', onClick)
       window.removeEventListener('keydown', onKeyDown)
     }
-  }, [onRestore])
+  }, [])
 
   return (
     <canvas
