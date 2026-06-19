@@ -8,7 +8,8 @@ const MOUSE_FORCE = 6
 const CLICK_FORCE = 14
 const Y_OFFSET = 17
 const RESTORE_DELAY = 5000
-const GRAVITY = 0.08
+const GRAVITY = 0.01
+const PARTICLE_BOUNCE = 0.4
 
 function sampleCharParticles(data, offsetX = 0, offsetY = 0) {
   const { char, rect, fontFamily, fontSize, fontWeight, color, scaleX } = data
@@ -190,7 +191,7 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
           const force = MOUSE_FORCE * (1 - dist / MOUSE_RADIUS)
           p.vx += (dx / dist) * force
           p.vy += (dy / dist) * force
-          p.angularV += (Math.random() - 0.5) * 0.08
+          p.angularV += (Math.random() - 0.5) * 0.03
           lastActivityRef.current = performance.now()
         }
 
@@ -202,7 +203,7 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
             const force = CLICK_FORCE * (1 - cdist / MOUSE_RADIUS)
             p.vx += (cdx / cdist) * force
             p.vy += (cdy / cdist) * force
-            p.angularV += (Math.random() - 0.5) * 0.25
+            p.angularV += (Math.random() - 0.5) * 0.08
             lastActivityRef.current = performance.now()
           }
         }
@@ -212,7 +213,7 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
 
         p.vx *= DAMPING
         p.vy *= DAMPING
-        p.angularV *= 0.96
+        p.angularV *= 0.95
 
         p.x += p.vx
         p.y += p.vy
@@ -223,7 +224,10 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
         if (p.x > W) { p.x = W; p.vx *= -WALL_BOUNCE; bounced = true }
         if (p.y < 0) { p.y = 0; p.vy *= -WALL_BOUNCE; bounced = true }
         if (p.y > H) { p.y = H; p.vy *= -WALL_BOUNCE; bounced = true }
-        if (bounced) p.angularV += (Math.random() - 0.5) * 0.2
+        // Only spin on impactful bounces (not gravity settling)
+        if (bounced && (Math.abs(p.vx) > 2 || Math.abs(p.vy) > 2)) {
+          p.angularV += (Math.random() - 0.5) * 0.08
+        }
 
         ctx.save()
         ctx.translate(p.x, p.y)
@@ -236,6 +240,39 @@ const PixelExplosion = forwardRef(({ onRestore }, ref) => {
         ctx.fillStyle = p.color
         ctx.fillRect(-hs, -hs, p.size, p.size)
         ctx.restore()
+      }
+
+      // ── Particle-particle collision (squared dist early-out) ──
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const a = particles[i]
+          const b = particles[j]
+          const dx = a.x - b.x
+          const dy = a.y - b.y
+          const minDist = (a.size + b.size) / 2
+          // Avoid sqrt for far-apart pairs
+          if (dx * dx + dy * dy >= minDist * minDist) continue
+
+          const dist = Math.sqrt(dx * dx + dy * dy)
+          if (dist < 0.01) continue
+
+          const nx = dx / dist
+          const ny = dy / dist
+          const overlap = minDist - dist
+
+          a.x += nx * overlap * 0.5
+          a.y += ny * overlap * 0.5
+          b.x -= nx * overlap * 0.5
+          b.y -= ny * overlap * 0.5
+
+          const relV = (a.vx - b.vx) * nx + (a.vy - b.vy) * ny
+          if (relV < 0) continue
+
+          a.vx -= nx * relV * 0.5 * PARTICLE_BOUNCE
+          a.vy -= ny * relV * 0.5 * PARTICLE_BOUNCE
+          b.vx += nx * relV * 0.5 * PARTICLE_BOUNCE
+          b.vy += ny * relV * 0.5 * PARTICLE_BOUNCE
+        }
       }
 
       // Auto-restore if idle for RESTORE_DELAY

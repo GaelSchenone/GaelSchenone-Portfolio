@@ -2,7 +2,7 @@ export default function DotGridBackground() {
   return (
     <div
       style={{
-        position: 'fixed',
+        position: 'absolute',
         inset: 0,
         zIndex: 0,
         pointerEvents: 'none',
